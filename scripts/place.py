@@ -176,17 +176,48 @@ class Diagram:
                 ports[(i, end)] = p
         return ports
 
+    @staticmethod
+    def _band(e, k):
+        """Where an exactly vertical (k=0) or horizontal (k=1) arrow may meet shape e: 10px in from its corners.
+
+        A diamond attaches only at its corners, so its band is the center line.
+        """
+        lo, size = e["xy"[k]], e["width" if k == 0 else "height"]
+        if e["type"] == "diamond":
+            return lo + size / 2, lo + size / 2
+        return lo + 10, lo + size - 10
+
+    def _snap(self, r, p0, p1):
+        """Make a straight arrow exactly vertical or horizontal when its shapes overlap across it.
+
+        The shared line runs through the narrower shape's port, clamped into both bands.
+        """
+        k = 0 if self._sides(r)[0] in "tb" else 1  # the coordinate both ends must share
+        (slo, shi), (tlo, thi) = self._band(self.shapes[r["a"]], k), self._band(self.shapes[r["b"]], k)
+        lo, hi = max(slo, tlo), min(shi, thi)
+        if lo > hi:
+            return p0, p1
+        v = min(max((p0 if shi - slo <= thi - tlo else p1)[k], lo), hi)
+        return tuple((v, p[1]) if k == 0 else (p[0], v) for p in (p0, p1))
+
+    def _toward(self, name, side, p, q):
+        """Slide end p along its side to line up with bend point q, when the shape allows it."""
+        k = 0 if side in "tb" else 1
+        lo, hi = self._band(self.shapes[name], k)
+        return ((q[0], p[1]) if k == 0 else (p[0], q[1])) if lo <= q[k] <= hi else p
+
     def _arrows(self):
         ports = self._ports()
         for i, r in enumerate(self.arrows):
             p0, p1 = ports[(i, 0)], ports[(i, 1)]
             if r["via"]:
-                pts = [p0, *r["via"], p1]
+                sa, sb = self._sides(r)
+                pts = [self._toward(r["a"], sa, p0, r["via"][0]), *r["via"], self._toward(r["b"], sb, p1, r["via"][-1])]
             elif (self._sides(r)[0] in "lr") != (self._sides(r)[1] in "lr"):  # elbow: one corner
                 corner = (p1[0], p0[1]) if self._sides(r)[0] in "lr" else (p0[0], p1[1])
                 pts = [p0, corner, p1]
             else:
-                pts = [p0, p1]
+                pts = list(self._snap(r, p0, p1))
             stroke, _, dash = self._style(r["fam"], r["change"])
             x0, y0 = pts[0]
             self.els.append({"id": self.id(r["name"]), "type": "arrow", "x": x0, "y": y0,

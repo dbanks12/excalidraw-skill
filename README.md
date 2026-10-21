@@ -8,7 +8,7 @@ An agent skill for Claude Code and Codex. It draws diagrams that explain code, c
 
 The agent reads `SKILL.md` to decide what to draw. It chooses box positions on a grid and passes them to `place.py`. `place.py` sizes the boxes, routes the arrows, and prints Excalidraw elements as JSON. The agent pipes that JSON to the `mcp-excalidraw-server` CLI, which draws the elements on a local canvas server.
 
-The agent then exports the scene and runs `lint_diagram.py`. The lint checks the box count, the words per label, the number of colors, and the aspect ratio. When the lint passes, the CLI renders the scene to a PNG without a browser. The agent views the PNG and critiques it against its brief.
+The agent then exports the scene and runs `lint_diagram.py`. The lint checks the box count, the words per label, the number of colors, and the aspect ratio. It also fails a crooked arrow. When two boxes line up across an arrow, the arrow must be exactly vertical or horizontal, and `place.py` draws it that way. Diagonals and curves pass. When the lint passes, the CLI renders the scene to a PNG without a browser. The agent views the PNG and critiques it against its brief.
 
 ![One drawing pass: write a brief, place shapes, lint, render, critique, and loop back on a lint failure or a fix](docs/drawing-pass.png)
 
