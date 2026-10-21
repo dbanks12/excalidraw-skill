@@ -11,9 +11,13 @@ whose id is "<element id>-label" labels that element (place.py writes these). Na
 zone or panel title "<id>-title", never "<id>-label".
 Free text (titles, rules panels, notes) has no word limit. Raise a limit with a flag
 only when the brief says why.
+An arrow segment within --max-skew degrees of vertical or horizontal must be exact.
+So must a straight arrow between two shapes that overlap across it. Clear diagonals
+and curves pass. An arrow end far from every shape is a WARN.
 """
 import argparse
 import json
+import math
 import sys
 
 SHAPES = {"rectangle", "ellipse", "diamond"}
@@ -78,6 +82,23 @@ def overlap(a, b, pad=2):
     return a[0] < b[2] - pad and b[0] + pad < a[2] and a[1] < b[3] - pad and b[1] + pad < a[3]
 
 
+def area(e):
+    x0, y0, x1, y1 = bbox(e)
+    return (x1 - x0) * (y1 - y0)
+
+
+def band(e, k):
+    """Where an exact vertical (k=0) or horizontal (k=1) arrow can meet shape e: 10px in from its corners.
+    A diamond meets arrows only at its corners, so its band is its center line. Matches place.py."""
+    lo, hi = bbox(e)[k], bbox(e)[k + 2]
+    return ((lo + hi) / 2,) * 2 if e["type"] == "diamond" else (lo + 10, hi - 10)
+
+
+def apart(a, b, k):
+    """The two shapes have a gap between them along axis k."""
+    return max(bbox(a)[k], bbox(b)[k]) > min(bbox(a)[k + 2], bbox(b)[k + 2])
+
+
 def near(pt, box, gap=16):
     return box[0] - gap <= pt[0] <= box[2] + gap and box[1] - gap <= pt[1] <= box[3] + gap
 
@@ -91,6 +112,8 @@ def main():
     ap.add_argument("--max-arrow-words", type=int, default=5)
     ap.add_argument("--max-aspect", type=float, default=3.0, help="width / height of the drawing")
     ap.add_argument("--max-colors", type=int, default=5, help="distinct non-gray stroke colors")
+    ap.add_argument("--max-skew", type=float, default=10.0,
+                    help="degrees off vertical or horizontal that count as a crooked straight arrow")
     args = ap.parse_args()
 
     scene = json.load(sys.stdin if args.scene == "-" else open(args.scene))
@@ -169,6 +192,27 @@ def main():
                 continue
             if any(through(s, text_box(t), pad=2) for s in zip(pts, pts[1:])):
                 fails.append(f"{eid} runs through text {t['id']}. Move the text off the line.")
+
+    for eid in ids:
+        pts = paths[eid]
+        curve = len(pts) > 2 and by_id[eid].get("roundness")
+        crooked = False
+        for (ax, ay), (bx, by) in [] if curve else zip(pts, pts[1:]):
+            dx, dy = abs(bx - ax), abs(by - ay)
+            skew = math.degrees(math.atan2(min(dx, dy), max(dx, dy)))
+            if min(dx, dy) > 0.5 and skew < args.max_skew:
+                axis = "vertical" if dy > dx else "horizontal"
+                fails.append(f"{eid}: a segment is {skew:.1f} degrees off {axis}. Make it exact, or clearly diagonal.")
+                crooked = True
+                break
+        a, b = (min((s for s in shapes if near(end, bbox(s))), key=area, default=None) for end in (pts[0], pts[-1]))
+        if not a or not b:
+            warns.append(f"{eid}: an end is not at a shape. Arrows should run box to box.")
+        elif len(pts) == 2 and a is not b and not crooked:
+            for k, axis in ((0, "vertical"), (1, "horizontal")):
+                (alo, ahi), (blo, bhi) = band(a, k), band(b, k)
+                if max(alo, blo) <= min(ahi, bhi) and apart(a, b, 1 - k) and abs(pts[0][k] - pts[1][k]) > 0.5:
+                    fails.append(f"{eid}: {a['id']} and {b['id']} line up, so the arrow must be exactly {axis}.")
 
     for t in texts:
         if t.get("containerId"):

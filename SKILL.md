@@ -95,6 +95,7 @@ Grid rules:
 - `box(..., change="added")` takes the code-change palette in section 6. `fam` takes a color family.
 - `zone()` draws a dotted boundary. Place it before its contents.
 - `arrow(..., route="elbow")` turns one corner. `via=[(x, y)]` adds bend points around an obstacle.
+- When two boxes overlap across an arrow, `place.py` makes the arrow exactly vertical or horizontal. It also lines up an arrow's end with its first or last `via` point. Lint fails any arrow that is almost straight but not exact.
 
 By type:
 
