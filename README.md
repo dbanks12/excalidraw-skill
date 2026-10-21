@@ -1,6 +1,6 @@
 # excalidraw-skill
 
-An agent skill for Claude Code and Codex. It draws diagrams that explain code, code changes, designs, and concepts on a live Excalidraw canvas. `SKILL.md` sets what to draw and how to compose it. `scripts/place.py` lays out boxes and arrows, and `scripts/lint_diagram.py` checks a diagram's word budget.
+An agent skill for Claude Code and Codex. It draws diagrams that explain code, code changes, designs, and concepts on a live Excalidraw canvas. `SKILL.md` sets what to draw and how to compose it. `scripts/place.py` lays out boxes and arrows, and `scripts/lint_diagram.py` checks the result.
 
 ## How it works
 
@@ -24,8 +24,12 @@ Clone the repo and link it into your skills directory:
     ln -s "$(pwd)/excalidraw-skill" ~/.claude/skills/excalidraw-skill
     ln -s "$(pwd)/excalidraw-skill" ~/.codex/skills/excalidraw-skill
 
-The skill needs Node.js with `npx`. It runs the canvas through `npx -y mcp-excalidraw-server@2.1.2` or later, which starts a canvas server at `http://127.0.0.1:3000`. The scripts need Python 3.
+The skill needs Node.js with `npx` and Python 3. It runs the canvas through the CLI of the `mcp-excalidraw-server` npm package, version 2.1.2 or later. The first canvas command starts a local server at `http://127.0.0.1:3000`. You do not need to register an MCP server. The skill can use the package's MCP tools if they are registered, but the CLI does the same work.
+
+`place.py` and `lint_diagram.py` are plain Python and run without the package. Drawing, export, and rendering need the package.
 
 ## Attribution
 
-This skill started from the `excalidraw-skill` that ships with [mcp-excalidraw-server](https://github.com/yctimlin/mcp_excalidraw) by yctimlin, under the MIT license. `references/mechanics.md` and `references/cheatsheet.md` are upstream text. `evals/evals.json` extends the upstream evals. `SKILL.md` and `scripts/` are new. See `LICENSE`.
+This skill started from the `excalidraw-skill` that ships with [mcp-excalidraw-server](https://github.com/yctimlin/mcp_excalidraw) by yctimlin, under the MIT license. See `LICENSE`. The upstream skill teaches the canvas mechanics. It is kept word for word in `references/mechanics.md` and `references/cheatsheet.md`.
+
+This repo adds the guidance on what to draw and how to check it. `SKILL.md` covers diagram choice, the brief, composition, and the lint, render, and critique loop. `place.py` and `lint_diagram.py` are new. `evals/evals.json` keeps one upstream eval and replaces the other four with six evals of diagram judgment.
