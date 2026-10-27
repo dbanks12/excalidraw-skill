@@ -99,7 +99,10 @@ Grid rules:
 
 By type:
 
-- **Decision tree:** questions in `diamond()`, drawn smooth so they read cleanly. Outcomes in colored boxes. Put each child row below its parent and offset to the side. Edges then run diagonally, parent to child, and the drawing reads as a tree rather than a grid. Answers (`yes`, `SSD`) go on the arrows.
+- **Decision tree:** questions in `diamond()`, with straight edges and sharp corners. Outcomes in colored boxes. Join each parent to its children with `arrow(..., route="tree")`. All of a parent's tree arrows leave one point, meet a shared bar, and drop into each child, with rounded bends. Answers (`yes`, `SSD`) go beside each drop.
+  - Grow the tree down when the rest of the page is wide, or right when it is tall or has many outcomes per question. `place.py` picks the direction from where you put the children.
+  - Down: put each child row 120px or more below its parent. Spread the children so each sits clear of its siblings.
+  - Right: put each child column 120px or more to the right of its parent, and stack the children.
 - **State machine:** a `start()` dot, states left to right in the order a run visits them, outcomes colored by result. Draw a retry as a dashed arrow back, or as a separate "next attempt" state.
 - **Sequence:** lanes 220px apart, lifelines as dashed `via` arrows or lines, one message every 60px, each label above its arrow.
 - **Comparison:** the same positions in both options, with only the differing edges in the accent color.

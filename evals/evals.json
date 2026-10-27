@@ -40,7 +40,7 @@
     {
       "id": 6,
       "prompt": "Draw a decision tree for choosing a database: relational data with joins goes to Postgres; otherwise, key lookups under 1 ms go to Redis; otherwise, large documents go to MongoDB.",
-      "expected_output": "One diagram. Questions in smooth diamonds (roughness 0), answers on the arrows, outcomes in colored boxes, and diagonal parent-to-child edges that read as a tree. Lint passes.",
+      "expected_output": "One diagram. Questions in diamonds with straight edges and sharp corners, outcomes in colored boxes, and route=\"tree\" arrows that fork from each question through a shared bar with rounded bends, answers beside each drop. Lint passes.",
       "files": []
     }
   ]
