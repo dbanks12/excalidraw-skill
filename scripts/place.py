@@ -79,9 +79,8 @@ class Diagram:
         e = {"id": self.id(name), "type": shape, "x": self.ox + x, "y": self.oy + y, "width": w, "height": h,
              "strokeColor": stroke, "backgroundColor": fill, "fillStyle": "solid", "strokeStyle": dash,
              "text": text, "fontSize": fs}
-        if shape == "rectangle":
-            e["roundness"] = SQUARE
-        else:
+        e["roundness"] = SQUARE  # sharp corners; a diamond with roundness null still exports rounded
+        if shape == "diamond":
             e["roughness"] = 0  # clean decision diamonds
         self.els.append(e)
         self.shapes[name] = e
@@ -104,6 +103,9 @@ class Diagram:
 
         route="straight" joins facing sides, diagonally when the shapes are offset (trees).
         route="elbow" leaves sideways, then turns into b from above or below.
+        route="tree" forks a decision: every tree arrow from a leaves one point, runs to a
+        shared bar, and drops into its child, with rounded bends. The tree grows down when
+        a's children sit mostly below it, and right when they sit mostly to its right.
         via=[(x, y), ...] adds explicit bend points in diagram coordinates.
         Arrows that share a side of a box spread along it, ordered by where they go.
         """
@@ -148,6 +150,8 @@ class Diagram:
         """Spread the arrows on each side of each shape, ordered by the far end's position."""
         uses = {}
         for i, r in enumerate(self.arrows):
+            if r["route"] == "tree":
+                continue  # _fork places these
             sa, sb = self._sides(r)
             far_a = r["via"][0] if r["via"] else self._center(self.shapes[r["b"]])
             far_b = r["via"][-1] if r["via"] else self._center(self.shapes[r["a"]])
@@ -206,9 +210,56 @@ class Diagram:
         lo, hi = self._band(self.shapes[name], k)
         return ((q[0], p[1]) if k == 0 else (p[0], q[1])) if lo <= q[k] <= hi else p
 
+    def _fork(self, r):
+        """Points of a tree arrow: out of the parent, along the shared bar, into the child."""
+        s, t = self.shapes[r["a"]], self.shapes[r["b"]]
+        kids = [self.shapes[o["b"]] for o in self.arrows if o["route"] == "tree" and o["a"] == r["a"]]
+        (scx, scy) = self._center(s)
+        dx = sum(self._center(k)[0] - scx for k in kids)
+        dy = sum(self._center(k)[1] - scy for k in kids)
+        k = 1 if dy >= dx else 0  # the axis the tree grows along: 1 down, 0 right
+        size = ("width", "height")
+        out = s["xy"[k]] + s[size[k]] + GAP  # where the stem leaves the parent
+        near = min(c["xy"[k]] for c in kids) - GAP  # the nearest child's facing edge
+        bar = (out + near) / 2 - 10
+        tc = self._center(t)
+
+        def pt(along, across):  # along the growth axis, across it
+            return (across, along) if k else (along, across)
+
+        p0, p1 = pt(out, (scx, scy)[1 - k]), pt(t["xy"[k]] - GAP, tc[1 - k])
+        turn = tc[1 - k] - (scx, scy)[1 - k]
+        if abs(turn) < 1:
+            return [p0, p1], 0
+        sign = 1 if turn > 0 else -1
+        rad = min(24, abs(turn) / 2, (bar - out) / 2, (p1[k] - bar) / 2)
+        arc = []
+        for corner, din, dout in (((scx, scy)[1 - k], (0, 1), (sign, 0)), (tc[1 - k], (sign, 0), (0, 1))):
+            c = pt(bar, corner)
+            # din and dout are (across, along) unit steps; map them to x, y
+            a = pt(c[k] - din[1] * rad, c[1 - k] - din[0] * rad)
+            b = pt(c[k] + dout[1] * rad, c[1 - k] + dout[0] * rad)
+            for n in range(7):  # a quadratic Bezier through the corner
+                f = n / 6
+                arc.append(tuple((1 - f) ** 2 * a[j] + 2 * (1 - f) * f * c[j] + f * f * b[j] for j in (0, 1)))
+        return [p0, *arc, p1], sign
+
     def _arrows(self):
         ports = self._ports()
         for i, r in enumerate(self.arrows):
+            if r["route"] == "tree":
+                pts, sign = self._fork(r)
+                self._emit_arrow(r, pts)
+                if r["label"]:  # beside the drop into the child, on the outer side
+                    stroke = self._style(r["fam"], r["change"])[0]
+                    w, h = text_size(r["label"], 16)
+                    (bx, by), (ex, ey) = pts[-2], pts[-1]
+                    if ex == bx:  # vertical drop
+                        x = ex + 10 if sign >= 0 else ex - 10 - w
+                        self._text(f"{r['name']}-label", x, (by + ey) / 2 - h / 2, r["label"], 16, stroke)
+                    else:  # horizontal run into the child
+                        self._text(f"{r['name']}-label", (bx + ex) / 2 - w / 2, ey - h - 6, r["label"], 16, stroke)
+                continue
             p0, p1 = ports[(i, 0)], ports[(i, 1)]
             if r["via"]:
                 sa, sb = self._sides(r)
@@ -218,16 +269,24 @@ class Diagram:
                 pts = [p0, corner, p1]
             else:
                 pts = list(self._snap(r, p0, p1))
-            stroke, _, dash = self._style(r["fam"], r["change"])
-            x0, y0 = pts[0]
-            self.els.append({"id": self.id(r["name"]), "type": "arrow", "x": x0, "y": y0,
-                             "points": [[px - x0, py - y0] for px, py in pts], "strokeColor": stroke,
-                             "strokeStyle": "dashed" if r["dashed"] else dash,
-                             "customData": {"from": self.id(r["a"]), "to": self.id(r["b"])}})
+            stroke = self._emit_arrow(r, pts)
             if r["label"]:
                 twins = [j for j, o in enumerate(self.arrows) if j != i and {o["a"], o["b"]} == {r["a"], r["b"]}]
                 outside = any(ports[(j, 0)][1] + ports[(j, 1)][1] < p0[1] + p1[1] for j in twins)  # a twin runs above
                 self._label(r["name"], pts, r["label"], stroke, below=outside)
+
+    def _emit_arrow(self, r, pts):
+        stroke, _, dash = self._style(r["fam"], r["change"])
+        x0, y0 = pts[0]
+        e = {"id": self.id(r["name"]), "type": "arrow", "x": x0, "y": y0,
+             "points": [[px - x0, py - y0] for px, py in pts], "strokeColor": stroke,
+             "strokeStyle": "dashed" if r["dashed"] else dash,
+             "customData": {"from": self.id(r["a"]), "to": self.id(r["b"])}}
+        if r["route"] == "tree":
+            e.update(roughness=0, strokeWidth=2, endArrowhead="triangle")
+            e["customData"]["tree"] = True
+        self.els.append(e)
+        return stroke
 
     def _label(self, aid, pts, label, color, fs=16, below=False):
         (ax, ay), (bx, by) = max(zip(pts, pts[1:]), key=lambda s: abs(s[1][0] - s[0][0]) + abs(s[1][1] - s[0][1]))

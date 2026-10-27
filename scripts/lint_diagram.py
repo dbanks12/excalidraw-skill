@@ -12,6 +12,8 @@ zone or panel title "<id>-title", never "<id>-label".
 Free text (titles, rules panels, notes) has no word limit. Raise a limit with a flag
 only when the brief says why.
 An arrow segment within --max-skew degrees of vertical or horizontal must be exact.
+Segments under 12px are exempt: they are the steps of a rounded bend.
+Tree arrows (customData.tree) from one parent share a trunk, so they never cross each other.
 So must a straight arrow between two shapes that overlap across it. Clear diagonals
 and curves pass. An arrow end far from every shape is a WARN.
 """
@@ -166,8 +168,14 @@ def main():
 
     paths = {e["id"]: points(e) for e in edges}
     ids = [i for i in paths if len(paths[i]) >= 2]
+    def fork(eid):
+        data = by_id[eid].get("customData") or {}
+        return data.get("from") if data.get("tree") else None
+
     for i, a in enumerate(ids):
         for b in ids[i + 1:]:
+            if fork(a) and fork(a) == fork(b):
+                continue  # siblings in one fork share their trunk
             ends = [paths[a][0], paths[a][-1], paths[b][0], paths[b][-1]]
             for s in zip(paths[a], paths[a][1:]):
                 for t in zip(paths[b], paths[b][1:]):
@@ -200,7 +208,7 @@ def main():
         for (ax, ay), (bx, by) in [] if curve else zip(pts, pts[1:]):
             dx, dy = abs(bx - ax), abs(by - ay)
             skew = math.degrees(math.atan2(min(dx, dy), max(dx, dy)))
-            if min(dx, dy) > 0.5 and skew < args.max_skew:
+            if min(dx, dy) > 0.5 and skew < args.max_skew and math.hypot(dx, dy) >= 12:
                 axis = "vertical" if dy > dx else "horizontal"
                 fails.append(f"{eid}: a segment is {skew:.1f} degrees off {axis}. Make it exact, or clearly diagonal.")
                 crooked = True
