@@ -27,7 +27,7 @@ Pick the type from the reader's question:
 Then pick the scope:
 
 - **One diagram** is the default. Most subjects fit in about 7 boxes: a state machine, a design comparison, a code change, a sequence, a decision tree, a small system. Keep it concise. Draw a dense, detailed diagram only when the user asks for one.
-- **Overview, then deep dive** for a big subject: an architecture or system whose working detail needs more than about 7 boxes. These are two separate diagrams, each exported and rendered to its own file. The **overview** shows the whole idea in at most 7 boxes, readable in five seconds. The **deep dive** adds the parts, groups, and rules a person needs to work on it. Reuse the overview's names, colors, and relative positions, so the reader carries one map into the other.
+- **Overview, then deep dive** for a big subject: an architecture or system whose working detail needs more than about 7 boxes. These are two separate diagrams, each exported and rendered to its own file. The **overview** shows the whole idea in 4–5 boxes, 7 at most, readable in five seconds. The **deep dive** adds the parts, groups, and rules a person needs to work on it. Reuse the overview's names, colors, and relative positions, so the reader carries one map into the other.
 - **A sentence instead** when the claim has no spatial relationship (a rename, a list, a one-line fix, a regex).
 
 Done when: you named a type and a scope.
@@ -59,7 +59,7 @@ Every drawing has these parts:
 - **Dotted groups** for real boundaries (a process, a package, a trust zone), so the reader sees the high level and the parts at once.
 - **A compact shape.** Aim for 4:3 to 16:9. Lint fails a drawing wider than 3:1. Wrap a long flow into two rows, or run it top-down.
 
-Sizes: about 7 boxes in an overview or a small diagram, at most 15 in any diagram.
+Sizes: 4–5 boxes in an overview, about 7 in a small diagram, at most 15 in any diagram.
 
 ## 4. Place the shapes
 
@@ -121,9 +121,9 @@ Done when: the drawing is on the canvas.
    - **Claim:** restate the claim from the picture alone. It should match the brief.
 4. Check hygiene in the same image: no clipped or wrapped label, no overlap, no label on a line or arrowhead.
 
-Fix, then repeat from step 1.
+Fix one to three named problems, then repeat from step 1. Keep the previous render beside the new one. Keep a revision only when lint shows no new problem and the new render reads better. Otherwise revert it. Visual self-critique often misjudges layout, so lint is the gate and the critique only proposes.
 
-Done when: lint passes, and all three critique lines match the brief.
+Done when: lint passes and all three critique lines match the brief, or after two rounds of fixes. Then report what still looks wrong.
 
 ## 6. Code-change diagrams
 
