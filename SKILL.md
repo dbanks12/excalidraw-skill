@@ -99,7 +99,7 @@ Grid rules:
 
 By type:
 
-- **Decision tree:** questions in `diamond()`, with straight edges and sharp corners. Outcomes in colored boxes. Join each parent to its children with `arrow(..., route="tree")`. All of a parent's tree arrows leave one point, meet a shared bar, and drop into each child, with rounded bends. Answers (`yes`, `SSD`) go beside each drop.
+- **Decision tree:** questions in `diamond()`, with straight edges and sharp corners. Outcomes in colored boxes. Arrows out of a diamond fork by default (`route="tree"`), so `yes` and `no` leave one point, meet a shared bar, and drop into each child, with rounded bends. Answers (`yes`, `SSD`) go beside each drop.
   - Grow the tree down when the rest of the page is wide, or right when it is tall or has many outcomes per question. `place.py` picks the direction from where you put the children.
   - Down: put each child row 120px or more below its parent. Spread the children so each sits clear of its siblings.
   - Right: put each child column 120px or more to the right of its parent, and stack the children.

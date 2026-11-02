@@ -98,9 +98,12 @@ class Diagram:
         self.shapes[name] = e
         return e
 
-    def arrow(self, a, b, label=None, fam="ink", change=None, dashed=False, route="straight", via=None):
+    def arrow(self, a, b, label=None, fam="ink", change=None, dashed=False, route=None, via=None):
         """Arrow from shape a to shape b. Geometry is computed in emit().
 
+        route=None picks "tree" for an arrow out of a diamond, so its answers share one point,
+        when every child of that diamond sits clear below it or clear to its right, and no
+        arrow comes back into that point. Otherwise it picks "straight".
         route="straight" joins facing sides, diagonally when the shapes are offset (trees).
         route="elbow" leaves sideways, then turns into b from above or below.
         route="tree" forks a decision: every tree arrow from a leaves one point, runs to a
@@ -244,7 +247,26 @@ class Diagram:
                 arc.append(tuple((1 - f) ** 2 * a[j] + 2 * (1 - f) * f * c[j] + f * f * b[j] for j in (0, 1)))
         return [p0, *arc, p1], sign
 
+    def _resolve_routes(self):
+        """Give each arrow without a route "tree" or "straight". See arrow()."""
+        for r in self.arrows:
+            if r["route"] or r["via"]:
+                r["route"] = r["route"] or "straight"
+                continue
+            s = self.shapes[r["a"]]
+            kids = [self.shapes[o["b"]] for o in self.arrows
+                    if o["a"] == r["a"] and o["route"] in (None, "tree") and not o["via"]]
+            srcs = [self.shapes[o["a"]] for o in self.arrows if o["b"] == r["a"]]
+            bottom, side = s["y"] + s["height"], s["x"] + s["width"]
+            # fork from the bottom or right point, unless an arrow comes back in there
+            below = all(k["y"] >= bottom for k in kids) and not any(o["y"] >= bottom for o in srcs)
+            right = all(k["x"] >= side for k in kids) and not any(o["x"] >= side for o in srcs)
+            r["route"] = "tree" if s["type"] == "diamond" and (below or right) else None
+        for r in self.arrows:
+            r["route"] = r["route"] or "straight"
+
     def _arrows(self):
+        self._resolve_routes()
         ports = self._ports()
         for i, r in enumerate(self.arrows):
             if r["route"] == "tree":
