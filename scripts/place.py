@@ -69,7 +69,11 @@ class Diagram:
         return e
 
     def box(self, name, x, y, label, sub=None, fam="gray", change=None, w=None, h=None, fs=18, shape="rectangle"):
-        """A labeled box at (x, y), top left. Sized to its label unless w or h is given."""
+        """A labeled box at (x, y), top left. Sized to its label unless w or h is given.
+
+        `sub` is a second line in parentheses, so it reads as a note on the label, not more of it."""
+        if sub and not (sub.startswith("(") and sub.endswith(")")):
+            sub = f"({sub})"
         text = f"{label}\n{sub}" if sub else label
         tw, th = text_size(text, fs)
         pad = 2.0 if shape == "diamond" else 1.0  # a diamond's label needs twice the room
