@@ -61,6 +61,22 @@ Every drawing has these parts:
 
 Sizes: 4–5 boxes in an overview, about 7 in a small diagram, at most 15 in any diagram.
 
+### Notes and legend
+
+Some systems have components that carry facts a reviewer needs: limits, sizes, checks, access rules. A box label cannot hold them. Put them in color-coded notes beside each box, and explain the colors in a legend. Skip this style for simple flows, sequences, state machines, code-change diagrams, and any diagram whose boxes need no facts. Notes there are clutter.
+
+- A note is one fact about one component, in 2–6 words. It is not a description of the component.
+- Pick 2–4 note kinds for the diagram, one color family each, such as red for limits and access, blue for size and placement, green for monitoring.
+- `notes()` stacks a box's notes in a column at its left edge. Put the column on the side away from the box's arrows, so no arrow crosses a note.
+- `legend()` draws a dotted box with a "Legend" heading and one line per kind, in its color. Put it in an empty corner.
+
+```python
+R, B, G = "red", "blue", "green"
+d.notes("cdn", [(R, "10,000 requests / 5 min per IP"), (B, "no caching, 60 s timeout")])
+d.notes("s3", [(B, "KMS-encrypted, versioned")], side="below")
+d.legend("legend", 0, 400, [(R, "limits and access"), (B, "size and placement"), (G, "monitoring")])
+```
+
 ## 4. Place the shapes
 
 Choose positions on a grid yourself, and let `scripts/place.py` build the elements. It sizes boxes to their labels, routes arrows between facing sides, spreads arrows that share a side, and puts each arrow label beside its line. Its header shows the full API.

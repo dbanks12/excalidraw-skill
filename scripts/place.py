@@ -353,6 +353,30 @@ class Diagram:
     def note(self, name, x, y, text, fam="ink", fs=16):
         return self._text(name, self.ox + x, self.oy + y, text, fs, FAM[fam][0])
 
+    def notes(self, box, lines, side="above", fs=16):
+        """Facts about one box: a column of (fam, text) lines at its left edge, colored by kind.
+
+        side="above" ends the column 30px over the box, side="below" starts it 30px under.
+        Put the column on the side away from the box's arrows."""
+        e = self.shapes[box]
+        heights = [text_size(text, fs)[1] for _, text in lines]
+        total = sum(heights) + 6 * (len(lines) - 1)
+        y = e["y"] - 30 - total if side == "above" else e["y"] + e["height"] + 30
+        for i, ((fam, text), h) in enumerate(zip(lines, heights)):
+            self._text(f"{box}-note{i}", e["x"], y, text, fs, FAM[fam][0])
+            y += h + 6
+
+    def legend(self, name, x, y, entries):
+        """A dotted box that names the note kinds: a "Legend" heading, then one "fam: text" line per entry."""
+        rows = [f"{fam}: {text}" for fam, text in entries]
+        w = round(max(text_size("Legend", 28)[0], *(text_size(r, 20)[0] for r in rows)) + 40)
+        self.els.append({"id": self.id(name), "type": "rectangle", "x": self.ox + x, "y": self.oy + y, "width": w,
+                         "height": 74 + 32 * len(rows), "strokeColor": FAM["gray"][0],
+                         "backgroundColor": "transparent", "strokeStyle": "dotted", "roundness": SQUARE})
+        self._text(f"{name}-title", self.ox + x + 20, self.oy + y + 14, "Legend", 28)
+        for i, ((fam, _), row) in enumerate(zip(entries, rows)):
+            self._text(f"{name}-{i}", self.ox + x + 20, self.oy + y + 62 + 32 * i, row, 20, FAM[fam][0])
+
     def emit(self):
         self._arrows()
         print(json.dumps(self.els, indent=1))
